@@ -17,9 +17,9 @@ services:
       DB_CONNECTION: mysql
       DB_HOST: db
       DB_PORT: '3306'
-      DB_DATABASE: laravel
-      DB_USERNAME: laravel
-      DB_PASSWORD: secret
+      DB_DATABASE: bengkel_mobil
+      DB_USERNAME: root
+      DB_PASSWORD: root
       MAIL_MAILER: smtp
       MAIL_HOST: mailhog
       MAIL_PORT: '1025'
@@ -83,10 +83,10 @@ services:
     container_name: bengkel_db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: secret
-      MYSQL_DATABASE: laravel
-      MYSQL_USER: laravel
-      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: bengkel_mobil
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
       TZ: Asia/Jakarta
     ports:
       - '3306:3306'
