@@ -1,0 +1,19 @@
+version: '3.9'
+
+services:
+  loadbalancer:
+    image: nginx:stable-alpine
+    container_name: bengkel_loadbalancer
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./docker/nginx/loadbalancer.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - bengkel_lb_network
+
+networks:
+  bengkel_lb_network:
+    driver: bridge

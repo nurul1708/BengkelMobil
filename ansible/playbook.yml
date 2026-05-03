@@ -1,0 +1,119 @@
+- name: Provision controller and managed nodes
+  hosts: all
+  become: yes
+  vars:
+    docker_packages:
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - apt-transport-https
+      - software-properties-common
+      - python3
+      - python3-apt
+      - python3-pip
+      - git
+      - dnsutils
+      - net-tools
+      - iproute2
+      - make
+      - unzip
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install common packages
+      apt:
+        name: "{{ docker_packages }}"
+        state: present
+
+    - name: Add Docker GPG key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable
+        state: present
+        filename: docker
+
+    - name: Install Docker Engine and Compose plugin
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: latest
+
+    - name: Ensure docker group exists
+      group:
+        name: docker
+        state: present
+
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    - name: Ensure Docker service is started and enabled
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Clone application repository
+      git:
+        repo: "{{ git_repo }}"
+        dest: "{{ app_dest }}"
+        version: main
+        force: yes
+
+    - name: Copy env example to .env if missing
+      copy:
+        src: "{{ app_dest }}/.env.example"
+        dest: "{{ app_dest }}/.env"
+        remote_src: yes
+        force: no
+
+- name: Configure controller-specific services
+  hosts: controller
+  become: yes
+  tasks:
+    - name: Install DNS and DHCP packages
+      apt:
+        name:
+          - bind9
+          - bind9utils
+          - isc-dhcp-server
+        state: present
+
+    - name: Ensure bind9 is started and enabled
+      service:
+        name: bind9
+        state: started
+        enabled: yes
+
+    - name: Ensure isc-dhcp-server is started and enabled
+      service:
+        name: isc-dhcp-server
+        state: started
+        enabled: yes
+
+    - name: Deploy load balancer service
+      command: docker compose -f {{ app_dest }}/docker-compose.lb.yml up -d --build
+      args:
+        chdir: "{{ app_dest }}"
+
+- name: Deploy application stack on managed node
+  hosts: managed
+  become: yes
+  tasks:
+    - name: Deploy application using docker compose
+      command: docker compose -f {{ app_dest }}/docker-compose.yml up -d --build
+      args:
+        chdir: "{{ app_dest }}"
